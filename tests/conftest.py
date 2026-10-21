@@ -14,7 +14,7 @@ from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine  # noqa: E402
 from sqlalchemy.pool import NullPool  # noqa: E402
 
-import app.models  # noqa: E402,F401  (registra todos os modelos no metadata)
+import app.models.all  # noqa: E402,F401  (registra todos os modelos no metadata)
 from app.api.deps import get_session  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
 from app.db.base import Base  # noqa: E402
