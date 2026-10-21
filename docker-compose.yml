@@ -1,0 +1,51 @@
+services:
+  # Banco de desenvolvimento (dados persistem no volume pgdata).
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: reo
+      POSTGRES_PASSWORD: reo
+      POSTGRES_DB: reo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reo -d reo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Banco de testes: em memória (tmpfs) e sem fsync — rápido e descartável.
+  db-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: reo
+      POSTGRES_PASSWORD: reo
+      POSTGRES_DB: reo_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    command: ["postgres", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reo -d reo_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # API em container (opcional): docker compose --profile app up -d --build
+  api:
+    profiles: ["app"]
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://reo:reo@db:5432/reo
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
