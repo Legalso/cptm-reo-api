@@ -1,7 +1,9 @@
 """Fixtures globais: banco de teste com rollback por teste e cliente HTTP."""
 
 import os
+import uuid
 from collections.abc import AsyncIterator
+from typing import Protocol
 
 # O app lê a config na importação: aponta para o banco de teste antes de tudo.
 os.environ["APP_ENV"] = "test"
@@ -17,8 +19,11 @@ from sqlalchemy.pool import NullPool  # noqa: E402
 import app.models.all  # noqa: E402,F401  (registra todos os modelos no metadata)
 from app.api.deps import get_session  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
+from app.core.security import create_access_token, hash_password  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.models.enums import Role  # noqa: E402
+from app.models.user import User  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -49,6 +54,54 @@ async def session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         finally:
             await sess.close()
             await trans.rollback()
+
+
+DEFAULT_PASSWORD = "Senha-forte-123"
+
+
+class UserFactory(Protocol):
+    async def __call__(
+        self, role: Role = ..., *, active: bool = ..., password: str = ...
+    ) -> User: ...
+
+
+@pytest.fixture
+def make_user(session: AsyncSession) -> UserFactory:
+    """Cria usuários direto no banco (sem passar pela API)."""
+
+    async def _make(
+        role: Role = Role.OPERATOR, *, active: bool = True, password: str = DEFAULT_PASSWORD
+    ) -> User:
+        suffix = uuid.uuid4().hex[:8]
+        user = User(
+            name=f"Usuário {suffix}",
+            email=f"user-{suffix}@reo.local",
+            registration=f"T-{suffix}".upper(),
+            password_hash=hash_password(password),
+            role=role,
+            active=active,
+        )
+        session.add(user)
+        await session.flush()
+        return user
+
+    return _make
+
+
+def auth_headers(user: User) -> dict[str, str]:
+    """Header Authorization com access token válido para o usuário."""
+    token, _ = create_access_token(user.id, user.role)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+async def admin(make_user: UserFactory) -> User:
+    return await make_user(Role.ADMIN)
+
+
+@pytest.fixture
+def admin_headers(admin: User) -> dict[str, str]:
+    return auth_headers(admin)
 
 
 @pytest.fixture

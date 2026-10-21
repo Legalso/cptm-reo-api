@@ -49,6 +49,14 @@ class ConflictError(AppError):
     default_detail = "Conflito com o estado atual do recurso."
 
 
+class UnprocessableError(AppError):
+    """Dado sintaticamente válido mas inaceitável no contexto (422)."""
+
+    status_code = 422
+    code = "validation_error"
+    default_detail = "Dados inválidos."
+
+
 class BusinessRuleError(AppError):
     """Violação de regra de negócio (ex.: movimentar dormente descartado)."""
 
