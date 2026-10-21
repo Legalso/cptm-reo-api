@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
     auth,
+    indicators,
     inspections,
     locations,
     monitoring,
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
         stock,
         inspections,
         sync,
+        indicators,
         monitoring,
     ):
         app.include_router(module.router)

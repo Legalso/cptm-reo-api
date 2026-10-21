@@ -5,10 +5,11 @@ from typing import Any
 
 from sqlalchemy import ForeignKey, Index, String, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.db.mixins import TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.user import User
 
 
 class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -29,3 +30,5 @@ class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     entity_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     before: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     after: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+    user: Mapped[User | None] = relationship(lazy="raise")
