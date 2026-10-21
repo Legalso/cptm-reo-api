@@ -24,6 +24,51 @@ def snapshot(obj: Base) -> dict[str, Any]:
     return result
 
 
+async def update_with_audit(
+    session: AsyncSession,
+    obj: Base,
+    changes: dict[str, Any],
+    *,
+    actor_id: uuid.UUID,
+    entity: str,
+    action: str = "update",
+) -> bool:
+    """Aplica `changes` no objeto e audita antes/depois; devolve False se nada mudou."""
+    changed = {k: v for k, v in changes.items() if getattr(obj, k) != v}
+    if not changed:
+        return False
+    before = snapshot(obj)
+    for key, value in changed.items():
+        setattr(obj, key, value)
+    await session.flush()
+    await record(
+        session,
+        actor_id=actor_id,
+        action=action,
+        entity=entity,
+        entity_id=getattr(obj, "id", None),
+        before=before,
+        after=snapshot(obj),
+    )
+    return True
+
+
+async def create_with_audit(
+    session: AsyncSession, obj: Base, *, actor_id: uuid.UUID | None, entity: str
+) -> None:
+    """Insere o objeto e audita a criação."""
+    session.add(obj)
+    await session.flush()
+    await record(
+        session,
+        actor_id=actor_id,
+        action="create",
+        entity=entity,
+        entity_id=getattr(obj, "id", None),
+        after=snapshot(obj),
+    )
+
+
 async def record(
     session: AsyncSession,
     *,

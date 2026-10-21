@@ -1,8 +1,20 @@
 """Schemas compartilhados: paginação e erro padrão."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict
+
+
+def _to_utc(value: datetime) -> datetime:
+    """Data sem fuso é tratada como UTC; com fuso é convertida para UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+UtcDatetime = Annotated[datetime, AfterValidator(_to_utc)]
 
 
 @dataclass(frozen=True)

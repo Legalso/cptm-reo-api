@@ -3,9 +3,17 @@
 `admin` é aceito implicitamente por `require_roles`, por isso não aparece aqui.
 """
 
+from collections.abc import Iterable
+
 from app.models.enums import Role
 
 ALL_ROLES = tuple(Role)
+
+
+def has_role(role: Role, allowed: Iterable[Role]) -> bool:
+    """Checagem fina dentro de services (admin sempre pode)."""
+    return role == Role.ADMIN or role in set(allowed)
+
 
 # Registrar entrada/retirada/transferência, inventário, ocorrência, cadastrar dormente.
 FIELD_ROLES = (Role.OPERATOR, Role.TECHNICIAN, Role.SPECIALIST)

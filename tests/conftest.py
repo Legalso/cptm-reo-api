@@ -3,6 +3,7 @@
 import os
 import uuid
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from typing import Protocol
 
 # O app lê a config na importação: aponta para o banco de teste antes de tudo.
@@ -22,7 +23,10 @@ from app.core.config import get_settings  # noqa: E402
 from app.core.security import create_access_token, hash_password  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.main import create_app  # noqa: E402
-from app.models.enums import Role  # noqa: E402
+from app.models.enums import LocationKind, Role, SleeperStatus  # noqa: E402
+from app.models.location import Location  # noqa: E402
+from app.models.sleeper import Sleeper  # noqa: E402
+from app.models.species import WoodSpecies  # noqa: E402
 from app.models.user import User  # noqa: E402
 
 
@@ -102,6 +106,58 @@ async def admin(make_user: UserFactory) -> User:
 @pytest.fixture
 def admin_headers(admin: User) -> dict[str, str]:
     return auth_headers(admin)
+
+
+@dataclass
+class Catalog:
+    species: WoodSpecies
+    warehouse: Location
+    street: Location
+    other_street: Location
+
+
+@pytest.fixture
+async def catalog(session: AsyncSession) -> Catalog:
+    """Espécie + pátio com duas ruas, criados direto no banco."""
+    species = WoodSpecies(code="13", scientific_name="Hymenaea courbaril")
+    warehouse = Location(name="TG – Três Guri", kind=LocationKind.WAREHOUSE)
+    session.add_all([species, warehouse])
+    await session.flush()
+    street = Location(name="Rua 08", kind=LocationKind.STREET, parent_id=warehouse.id)
+    other = Location(name="Rua 09", kind=LocationKind.STREET, parent_id=warehouse.id)
+    session.add_all([street, other])
+    await session.flush()
+    return Catalog(species=species, warehouse=warehouse, street=street, other_street=other)
+
+
+class SleeperFactory(Protocol):
+    async def __call__(
+        self, *, status: SleeperStatus = ..., location: Location | None = ..., tag: str = ...
+    ) -> Sleeper: ...
+
+
+@pytest.fixture
+def make_sleeper(session: AsyncSession, catalog: Catalog) -> SleeperFactory:
+    """Dormente direto no banco (sem movimentação), no estado pedido."""
+
+    async def _make(
+        *,
+        status: SleeperStatus = SleeperStatus.IN_STOCK,
+        location: Location | None = None,
+        tag: str = "",
+    ) -> Sleeper:
+        in_yard = status in (SleeperStatus.IN_STOCK, SleeperStatus.QUARANTINE)
+        sleeper = Sleeper(
+            rfid_tag=tag or f"TAG{uuid.uuid4().hex[:12].upper()}",
+            species_id=catalog.species.id,
+            status=status,
+            current_location_id=(location or catalog.street).id if in_yard else None,
+        )
+        session.add(sleeper)
+        await session.flush()
+        return sleeper
+
+    return _make
 
 
 @pytest.fixture
