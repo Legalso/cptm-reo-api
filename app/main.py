@@ -14,6 +14,7 @@ from app.api.routes import (
     sleepers,
     species,
     stock,
+    sync,
     users,
 )
 from app.core.config import APP_NAME, APP_VERSION, get_settings
@@ -58,7 +59,17 @@ def create_app() -> FastAPI:
     )
     register_error_handlers(app)
 
-    for module in (auth, users, species, locations, sleepers, stock, inspections, monitoring):
+    for module in (
+        auth,
+        users,
+        species,
+        locations,
+        sleepers,
+        stock,
+        inspections,
+        sync,
+        monitoring,
+    ):
         app.include_router(module.router)
     return app
 
