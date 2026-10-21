@@ -10,7 +10,7 @@ from pydantic.config import JsonDict
 
 from app.models.enums import SleeperStatus
 from app.schemas.common import ORMModel, RfidTag, UtcDatetime
-from app.schemas.inspection import InspectionRead
+from app.schemas.inspection import INSPECTION_EXAMPLE, InspectionRead
 from app.schemas.location import LocationSummary
 from app.schemas.species import SpeciesSummary
 from app.schemas.stock import MovementRead, OccurrenceRead
@@ -132,6 +132,42 @@ class HistoryEntry(BaseModel):
 
 class SleeperHistory(BaseModel):
     """Linha do tempo do dormente, em ordem cronológica."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "sleeper": _SLEEPER_EXAMPLE,
+                "items": [
+                    {
+                        "type": "movement",
+                        "occurred_at": "2026-10-21T13:00:00Z",
+                        "movement": {
+                            "id": "9c8b7a6d-5e4f-4321-9abc-def012345678",
+                            "sleeper_id": "3e2d1c0b-a9f8-4e7d-b6c5-a4b3c2d1e0f9",
+                            "kind": "entry",
+                            "from_location_id": None,
+                            "to_location_id": "5a1d2c3b-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                            "requisition_number": None,
+                            "notes": None,
+                            "user_id": "6f1c1f2e-8f0a-4c8e-9a3f-2b7d6c1e4a10",
+                            "occurred_at": "2026-10-21T13:00:00Z",
+                            "client_uuid": None,
+                            "created_at": "2026-10-21T13:00:05Z",
+                        },
+                        "inspection": None,
+                        "occurrence": None,
+                    },
+                    {
+                        "type": "inspection",
+                        "occurred_at": "2026-10-21T14:00:00Z",
+                        "movement": None,
+                        "inspection": INSPECTION_EXAMPLE,
+                        "occurrence": None,
+                    },
+                ],
+            }
+        }
+    )
 
     sleeper: SleeperRead
     items: list[HistoryEntry]

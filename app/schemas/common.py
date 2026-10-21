@@ -65,6 +65,34 @@ class ErrorResponse(BaseModel):
     code: str
 
 
+class FieldError(BaseModel):
+    loc: list[str | int]
+    msg: str
+    type: str
+
+
+class ValidationErrorResponse(ErrorResponse):
+    """422: mesmo formato padrão, com a lista de campos inválidos em `errors`."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "detail": "Dados inválidos em 'quantity': Input should be greater than or equal to 0",  # noqa: E501
+                "code": "validation_error",
+                "errors": [
+                    {
+                        "loc": ["body", "quantity"],
+                        "msg": "Input should be greater than or equal to 0",
+                        "type": "greater_than_equal",
+                    }
+                ],
+            }
+        }
+    )
+
+    errors: list[FieldError] = []
+
+
 class ORMModel(BaseModel):
     """Base dos schemas de saída montados a partir de modelos ORM."""
 

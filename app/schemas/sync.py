@@ -161,7 +161,13 @@ class SyncBatchRead(ORMModel):
 
 
 class SyncStatusRead(BaseModel):
-    """Último lote do usuário (e do aparelho, se informado)."""
+    """Último lote do usuário (e do aparelho, se informado); `null` se nunca sincronizou."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {"last_batch": _RESULT_EXAMPLE, "server_time": "2026-10-21T18:05:00Z"}
+        }
+    )
 
     last_batch: SyncBatchRead | None
     server_time: datetime
