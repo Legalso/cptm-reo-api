@@ -3,31 +3,17 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.config import JsonDict
 
 from app.models.enums import SleeperStatus
-from app.schemas.common import ORMModel, UtcDatetime
+from app.schemas.common import ORMModel, RfidTag, UtcDatetime
 from app.schemas.inspection import InspectionRead
 from app.schemas.location import LocationSummary
 from app.schemas.species import SpeciesSummary
 from app.schemas.stock import MovementRead, OccurrenceRead
-
-
-def normalize_tag(value: str) -> str:
-    """Tag RFID sem espaços e em maiúsculas: o mesmo código lido de formas diferentes casa."""
-    return value.strip().upper()
-
-
-RfidTag = Annotated[
-    str,
-    Field(
-        min_length=1, max_length=64, pattern=r"^\s*\S+\s*$", examples=["E2801160600002084E5A1B21"]
-    ),
-    AfterValidator(normalize_tag),
-]
 
 _SLEEPER_EXAMPLE: JsonDict = {
     "id": "3e2d1c0b-a9f8-4e7d-b6c5-a4b3c2d1e0f9",

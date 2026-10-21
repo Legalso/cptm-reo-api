@@ -59,6 +59,22 @@ async def get_by_tag(session: AsyncSession, rfid_tag: str) -> Sleeper:
     return sleeper
 
 
+async def resolve_for_update(
+    session: AsyncSession, sleeper_id: uuid.UUID | None, rfid_tag: str | None
+) -> Sleeper:
+    """Encontra o dormente por id ou tag travando a linha (operações concorrentes
+    sobre o mesmo dormente ficam em fila em vez de se atropelarem)."""
+    if sleeper_id is not None:
+        sleeper = await sleeper_repo.get_for_update(session, sleeper_id)
+    elif rfid_tag is not None:
+        sleeper = await sleeper_repo.get_by_tag_for_update(session, rfid_tag)
+    else:
+        sleeper = None
+    if sleeper is None:
+        raise NotFoundError("Dormente não encontrado.", code="sleeper_not_found")
+    return sleeper
+
+
 async def list_sleepers(
     session: AsyncSession,
     page: PageParams,

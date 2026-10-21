@@ -2,19 +2,20 @@
 
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import ForbiddenError, UnauthorizedError
+from app.core.errors import ForbiddenError, UnauthorizedError, UnprocessableError
 from app.core.security import TokenType, decode_token
 from app.db.engine import SessionFactory
 from app.models.enums import Role
 from app.models.user import User
 from app.repositories import users as user_repo
-from app.schemas.common import PageParams
+from app.schemas.common import PageParams, Period
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
@@ -71,3 +72,26 @@ def page_params(
 
 
 PageDep = Annotated[PageParams, Depends(page_params)]
+
+
+def period_params(
+    de: Annotated[
+        datetime | None, Query(description="Início (ISO 8601, inclusivo; sem fuso = UTC)")
+    ] = None,
+    ate: Annotated[
+        datetime | None, Query(description="Fim (ISO 8601, exclusivo; sem fuso = UTC)")
+    ] = None,
+) -> Period:
+    """Filtro de período `?de=&ate=` usado nas listagens e indicadores."""
+    start = _as_utc(de) if de else None
+    end = _as_utc(ate) if ate else None
+    if start and end and start >= end:
+        raise UnprocessableError("'de' precisa ser anterior a 'ate'.", code="invalid_period")
+    return Period(start=start, end=end)
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+PeriodDep = Annotated[Period, Depends(period_params)]

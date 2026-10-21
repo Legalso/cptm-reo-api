@@ -10,13 +10,12 @@ from app.api.responses import AUTH, AUTH_VALIDATION, errors
 from app.core.permissions import ALL_ROLES, FIELD_ROLES
 from app.models.enums import SleeperStatus
 from app.models.user import User
-from app.schemas.common import Page
+from app.schemas.common import Page, normalize_tag
 from app.schemas.sleeper import (
     SleeperCreate,
     SleeperHistory,
     SleeperRead,
     SleeperUpdate,
-    normalize_tag,
 )
 from app.services import sleepers as sleeper_service
 

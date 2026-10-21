@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 
 def _to_utc(value: datetime) -> datetime:
@@ -17,10 +17,32 @@ def _to_utc(value: datetime) -> datetime:
 UtcDatetime = Annotated[datetime, AfterValidator(_to_utc)]
 
 
+def normalize_tag(value: str) -> str:
+    """Tag RFID sem espaços e em maiúsculas: o mesmo código lido de formas diferentes casa."""
+    return value.strip().upper()
+
+
+RfidTag = Annotated[
+    str,
+    Field(
+        min_length=1, max_length=64, pattern=r"^\s*\S+\s*$", examples=["E2801160600002084E5A1B21"]
+    ),
+    AfterValidator(normalize_tag),
+]
+
+
 @dataclass(frozen=True)
 class PageParams:
     limit: int = 50
     offset: int = 0
+
+
+@dataclass(frozen=True)
+class Period:
+    """Intervalo [start, end) em UTC; None = aberto."""
+
+    start: datetime | None = None
+    end: datetime | None = None
 
 
 class Page[T](BaseModel):
