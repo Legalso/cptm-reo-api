@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.1  # o setup-uv não publica tag major
         with:
           enable-cache: true
       - run: uv sync
@@ -73,7 +73,7 @@ jobs:
       SEED_ADMIN_PASSWORD: ci-senha-descartavel
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.1  # o setup-uv não publica tag major
         with:
           enable-cache: true
       - run: uv sync
