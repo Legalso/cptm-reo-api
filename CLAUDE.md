@@ -92,3 +92,4 @@ Analogia: o router é o balcão de atendimento, o service é quem decide, o repo
 - Mudança que altera contrato de rota usada pelo site/app → pare e pergunte.
 - Prefira entregas pequenas e verificáveis; rode os testes ao fim de cada etapa.
 - Itens marcados **A DECIDIR** em `docs/CONTEXTO.md` não devem ser inventados: implemente o mínimo e deixe `TODO(decidir)`.
+- Não adicione `Co-Authored-By`, links de sessão ou menções ao Claude em commits e PRs.
