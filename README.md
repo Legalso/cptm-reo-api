@@ -1,5 +1,7 @@
 # cptm-reo-api
 
+[![CI](https://github.com/Legalso/cptm-reo-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Legalso/cptm-reo-api/actions/workflows/ci.yml)
+
 API REST do **Projeto REO / CPTM** — rastreio, movimentação, inventário e inspeção digital
 de dormentes ferroviários identificados por RFID. Conecta o app de campo
 ([APP-ProjetoCPTM-REO](https://github.com/1000Tsurus/APP-ProjetoCPTM-REO)) e o site gerencial
@@ -40,6 +42,15 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy app
 uv run pre-commit install                      # ruff em todo commit
 ```
 Os testes recriam o schema no `db-test` e cada teste roda numa transação desfeita ao final.
+
+O CI (`.github/workflows/ci.yml`) roda em todo PR e push na `main`:
+1. **Lint e tipos:** ruff e mypy.
+2. **Migrations e testes**, contra Postgres 16:
+   - `alembic upgrade`, `downgrade` e `upgrade` de novo;
+   - `alembic check`, que confirma que os modelos batem com as migrations;
+   - o seed rodado duas vezes;
+   - o pytest.
+3. **Build** da imagem Docker.
 
 ## Variáveis de ambiente
 | Variável | Padrão | Para quê |

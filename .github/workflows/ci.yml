@@ -1,0 +1,108 @@
+# CI: lint/tipos, migrations + testes contra Postgres real e build da imagem.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Novo push no mesmo PR cancela a execução anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  UV_LOCKED: "1"  # falha se o uv.lock estiver desatualizado em relação ao pyproject
+
+jobs:
+  lint:
+    name: Lint e tipos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - run: uv sync
+      - name: ruff check
+        run: uv run ruff check . --output-format=github
+      - name: ruff format
+        run: uv run ruff format --check .
+      - name: mypy
+        run: uv run mypy app
+
+  test:
+    name: Migrations e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      # Espelha o docker-compose: db para migrations/seed, db-test para o pytest.
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: reo
+          POSTGRES_PASSWORD: reo
+          POSTGRES_DB: reo
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U reo -d reo"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      db-test:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: reo
+          POSTGRES_PASSWORD: reo
+          POSTGRES_DB: reo_test
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U reo -d reo_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql+asyncpg://reo:reo@localhost:5432/reo
+      TEST_DATABASE_URL: postgresql+asyncpg://reo:reo@localhost:5433/reo_test
+      # Valor descartável só para o CI (não é segredo de nenhum ambiente).
+      JWT_SECRET: ci-somente-teste-nao-usar-em-producao-0123456789abcdef
+      CORS_ORIGINS: http://localhost:5173
+      SEED_ADMIN_EMAIL: admin@reo.local
+      SEED_ADMIN_REGISTRATION: ADM-0001
+      SEED_ADMIN_PASSWORD: ci-senha-descartavel
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - run: uv sync
+      - name: Migrations (upgrade, ida e volta)
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+      - name: Modelos batem com as migrations
+        run: uv run alembic check
+      - name: Seed idempotente
+        run: |
+          uv run python -m app.scripts.seed
+          uv run python -m app.scripts.seed
+      - name: pytest
+        run: uv run pytest -q --junit-xml=pytest-report.xml
+      - name: Relatório de testes
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pytest-report
+          path: pytest-report.xml
+          if-no-files-found: ignore
+
+  docker:
+    name: Build da imagem
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: docker build
+        run: docker build -t cptm-reo-api:ci .
