@@ -19,7 +19,7 @@ movimentações, inventário e inspeções; o site mostra a visão gerencial.
 
 ## Fora do escopo (por enquanto)
 IA / análise de imagem, data lake, impressora térmica, QR Code e NFC (só RFID).
-Hospedagem: agnóstica (Dockerfile); alvo provável Azure (créditos estudantis).
+Hospedagem: Azure for Students (decidido em 02/11/2026 — ver "Decisões tomadas" e `docs/DEPLOY.md`).
 
 ## Papéis (RBAC)
 | Papel | Pode |
@@ -114,5 +114,12 @@ movimentações por dia (7 dias padrão); inspeções por dia; tempo médio de i
 - MFA: TOTP (app autenticador) vs código por e-mail.
 - Credencial offline de 48h: formato e revogação.
 - Envio real de e-mail de convite (provedor).
-- Deploy: Azure App Service vs Container Apps; Azure Database for PostgreSQL Flexible Server.
 - Regra de conciliação de inventário (contagem física x sistema).
+
+## Decisões tomadas
+- **Deploy (02/11/2026):** API em **Azure Container Apps** (plano de consumo, escala a zero) +
+  **Azure Database for PostgreSQL Flexible Server** no tier Burstable **B1ms**, ambos na
+  assinatura Azure for Students. A imagem é publicada pelo CI no **ghcr.io** a cada push na `main`.
+  Motivos: o Container Apps usa o Dockerfile que já existe e cabe na cota gratuita mensal quando
+  escala a zero; o B1ms está na camada gratuita de 12 meses (750 h/mês + 32 GB). Passo a passo em
+  `docs/DEPLOY.md`.
