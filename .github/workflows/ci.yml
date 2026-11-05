@@ -6,10 +6,10 @@ on:
     branches: [main]
   pull_request:
 
-# Novo push no mesmo PR cancela a execução anterior.
+# Novo push no mesmo PR cancela a execução anterior; na main nunca (não corta uma publicação).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -106,3 +106,40 @@ jobs:
       - uses: actions/checkout@v7
       - name: docker build
         run: docker build -t cptm-reo-api:ci .
+
+  # Só na main, e só se lint, testes e build passaram: publica a imagem usada no deploy
+  # (Azure Container Apps — ver docs/DEPLOY.md). Tags: `latest` e `sha-<commit>`.
+  publish:
+    name: Publicar imagem (ghcr.io)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test, docker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tags da imagem
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          # O metadata-action converte para minúsculas (exigência do ghcr.io).
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
