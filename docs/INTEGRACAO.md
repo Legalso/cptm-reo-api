@@ -112,7 +112,36 @@ POST /sincronizacao/replicar
 - Os POSTs diretos (`/estoque/...`, `/inspecoes`, `/dormentes`) também são idempotentes por
   `client_uuid`: `201` quando cria, `200` quando é reenvio.
 
-## 6. Site: mapeamento dos `ENDPOINTS` (src/App.jsx)
+## 6. Site: rotas usadas (`src/telas/`, `src/api/cliente.js`)
+
+Repo `mpliHD/frontend-reo.github.io`, publicado em `https://mplihd.github.io/frontend-reo.github.io/`.
+Desde 2026-11 o site fala com a API de verdade quando o build tem `VITE_API_URL`; sem ela,
+roda em modo demonstração (dados fictícios). Ele já faz tudo que a seção "Ajustes" abaixo pedia:
+Bearer em todas as chamadas, renovação em `401 token_expired`, os 5 papéis, convite com o link
+da API e tela de aceite em `#/convite/<token>`.
+
+| Tela do site | Rotas |
+|---|---|
+| Login / sessão | `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me` |
+| Aceite do convite | `POST /auth/convite/aceitar` |
+| Dormentes (+ detalhe) | `GET /dormentes`, `GET /dormentes/{id}`, `GET /dormentes/{id}/historico` |
+| Retiradas (RM) | `GET /estoque/movimentacoes?kind=withdrawal` (nomes resolvidos com `/locais`, `/dormentes/{id}`, `/usuarios`) |
+| Inspeções | `GET /inspecoes` |
+| Painel | `GET /indicadores`, `GET /monitoramento/status` |
+| Espécies / Locais | `GET/POST/PATCH /especies`, `GET/POST/PATCH /locais` |
+| Usuários | `GET/POST /usuarios`, `PATCH /usuarios/{id}/papel`, `POST /usuarios/convite` |
+| Logs | `GET /logs` |
+
+**Link de convite:** o Pages não tem rota no servidor, então o site usa `#`. Configure
+`INVITE_BASE_URL` terminando em `#` (`https://mplihd.github.io/frontend-reo.github.io/#` em
+produção, `http://localhost:5173/app.html#` em dev): a API monta `<base>/convite/<token>`.
+O CORS já libera `https://mplihd.github.io` (a origem não inclui o caminho do repo).
+
+**Ponto de atenção:** `GET /estoque/movimentacoes` e `GET /inspecoes` só devolvem ids
+(`sleeper_id`, `user_id`, `inspector_id`, locais). O site resolve os nomes com chamadas extras e
+cache; se isso pesar, vale embutir resumos (tag, nome do local, nome do usuário) nessas respostas.
+
+### Mapeamento antigo (`ENDPOINTS` de `src/App.jsx`, antes da integração)
 
 | `ENDPOINTS` do site | Rota real | Observação |
 |---|---|---|
@@ -136,7 +165,7 @@ Rotas novas úteis para o site: `/indicadores` (dashboard), `/dormentes` (+ `/ta
 `/{id}/historico`), `/especies`, `/locais`, `/inspecoes`, `/estoque/movimentacoes`,
 `/estoque/inventarios`, `/auth/me`, `/auth/refresh`.
 
-### Ajustes necessários no site
+### Ajustes que o site precisava (já feitos em 2026-11)
 1. **Convite exige login de admin.** O `InviteSection` chama `POST /usuarios/convite` sem
    `Authorization`; precisa enviar o Bearer, senão recebe `401`.
 2. **Corpo do convite:** `{nome, email, papel, link}` continua aceito, mas:

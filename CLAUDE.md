@@ -8,9 +8,11 @@ Contexto de negócio, modelo de domínio e contrato de rotas: `docs/CONTEXTO.md`
 - **App mobile** (Expo/React Native, operador de campo) — repo `1000Tsurus/APP-ProjetoCPTM-REO`.
   O leitor RFID fala **só com o app**; a API recebe apenas o código da tag.
   O app trabalha offline e envia lotes por `POST /sincronizacao/replicar`.
-- **Site gerencial** (React + Vite, GitHub Pages) — repo `mpliHD/mpliHD.github.io`.
-  Já tem os paths e a URL base `http://localhost:4000` fixados em `src/App.jsx` (const `ENDPOINTS`).
-  **Não quebre esses paths.** Rotas novas podem ser adicionadas.
+- **Site gerencial** (React + Vite, GitHub Pages) — repo `mpliHD/frontend-reo.github.io`,
+  publicado em `https://mplihd.github.io/frontend-reo.github.io/`. Fala com a API por
+  `src/api/cliente.js` (URL em `VITE_API_URL`; padrão `http://localhost:4000` no `npm run dev`).
+  Sem API configurada, roda em modo demonstração. As rotas que ele usa estão em
+  `docs/INTEGRACAO.md` §6. **Não quebre esses paths.** Rotas novas podem ser adicionadas.
 
 ## Stack
 - Python 3.12+, gerenciado com **uv** (`uv add`, `uv run`). Nunca use `pip install` direto.
