@@ -20,6 +20,42 @@ App (Expo)          ──HTTPS──┘   (escala a zero)
 Os comandos abaixo são para **PowerShell** (Windows). No bash, troque a crase do fim de linha
 por `\` e `$VAR = "x"` por `VAR="x"`.
 
+## Antes de começar
+
+**Ordem:** este guia só funciona depois que a branch `chore/deploy-azure` entrou na `main` **e** o
+CI publicou a imagem (como conferir: seção 0, item 4). O Docker **não** é necessário para o deploy.
+
+Tenha em mãos:
+
+| Item | Como conseguir | Onde guardar |
+|---|---|---|
+| Repositório na sua máquina, com `uv sync` feito | `git clone` + README, seção "Rodando localmente" | — |
+| `.env` local com `JWT_SECRET` válido | `cp .env.example .env` e gerar o segredo (instrução no próprio arquivo) | Só na sua máquina; nunca commitar |
+| Assinatura Azure for Students ativa | Seção 0, item 1 | — |
+| Azure CLI instalada e logada | Seção 0, item 2 | — |
+| Token do GitHub com `read:packages` | Seção 0, item 3 | Gerenciador de senhas |
+| Senha do banco (`$PG_PASS`) | Você cria: 8 a 128 caracteres, com pelo menos 3 de: maiúscula, minúscula, número, símbolo | Gerenciador de senhas |
+| E-mail, matrícula e senha do admin de produção | Você define | Gerenciador de senhas |
+| Tag da imagem (`sha-...`) | Seção 0, item 4 | — |
+
+O `.env` local é necessário porque as migrations e o seed (seção 5) rodam **na sua máquina** e
+carregam a configuração da API. Sem um `JWT_SECRET` válido, eles param antes de conectar.
+
+### Termos usados
+- **Assinatura:** a conta de cobrança (aqui, a Azure for Students). Todo recurso pertence a uma.
+- **Grupo de recursos:** uma pasta com tudo deste projeto. Apagar o grupo apaga tudo de uma vez.
+- **Flexible Server:** o servidor PostgreSQL gerenciado pela Azure. Backup e atualização ficam por
+  conta dela.
+- **Firewall do banco:** a lista de IPs que podem conectar. Fora dela, ninguém conecta.
+- **Ambiente do Container Apps:** a rede onde os apps rodam. Ele cria junto um workspace de logs.
+- **Container App:** a API rodando a partir da imagem Docker.
+- **Revisão:** cada versão publicada do Container App. Dá para voltar a uma anterior.
+- **Secret:** um valor sensível guardado pelo Container Apps e entregue à API como variável de
+  ambiente. Ele não aparece em texto quando você consulta a configuração do app.
+- **Ingress / FQDN:** a entrada HTTPS pública e o endereço dela
+  (`reo-api.<algo>.<região>.azurecontainerapps.io`).
+- **PAT:** token pessoal do GitHub. Aqui ele substitui a senha para o Azure baixar a imagem privada.
+
 ## 0. Pré-requisitos (uma vez)
 1. Assinatura **Azure for Students** ativa (https://azure.microsoft.com/free/students). Ela vem
    com crédito e sem cartão. Quando o crédito acaba, os recursos param; nada é cobrado.
@@ -34,8 +70,14 @@ por `\` e `$VAR = "x"` por `VAR="x"`.
 3. Um **token do GitHub** (classic PAT) com o escopo `read:packages`, criado em
    https://github.com/settings/tokens. O repositório é privado, então a imagem no ghcr.io
    também é, e o Azure precisa desse token para baixá-la.
-4. A imagem já publicada: depois do merge na `main`, confira em
-   *GitHub → repositório → Packages* que existe `cptm-reo-api` com uma tag `sha-...`.
+4. A imagem já publicada. Depois do merge na `main`, espere o CI terminar e confira em
+   *GitHub → repositório → Packages → cptm-reo-api* que existe uma tag `sha-...`.
+   A tag é `sha-` seguido dos 7 primeiros caracteres do commit da `main`. Para ver esse valor:
+   ```powershell
+   git fetch origin; git rev-parse --short=7 origin/main
+   ```
+   Se o pacote não aparecer, abra *Actions*, entre na última execução da `main` e veja se o job
+   "Publicar imagem (ghcr.io)" passou.
 
 ## 1. Variáveis
 ```powershell
@@ -48,6 +90,10 @@ $ENVNAME  = "reo-env"
 $APP      = "reo-api"
 $IMAGE    = "ghcr.io/legalso/cptm-reo-api:sha-<commit>"   # tag publicada pelo CI
 ```
+
+**Use a mesma janela do PowerShell do começo ao fim.** As variáveis só existem na janela onde
+foram criadas. Se fechar, cole de novo este bloco e o da seção 4 antes de continuar. Sem isso, os
+comandos seguintes falham com mensagens confusas (por exemplo, nome de recurso vazio).
 
 **Região:** a assinatura de estudante só deixa criar recursos em algumas regiões. Se algum
 comando falhar com `RequestDisallowedByAzure` ou "location is restricted", troque `$LOCATION`
@@ -88,15 +134,20 @@ $DATABASE_URL = "postgresql+asyncpg://${PG_USER}:${PG_PASS_URL}@$PG.postgres.dat
 ## 5. Migrations e seed (da sua máquina, na raiz do repositório)
 ```powershell
 $env:DATABASE_URL = $DATABASE_URL
+$env:SEED_ADMIN_EMAIL = "<e-mail do admin de produção>"
+$env:SEED_ADMIN_REGISTRATION = "<matrícula do admin, ex.: ADM-0001>"
 $env:SEED_ADMIN_PASSWORD = "<senha do admin de produção>"   # não use a do .env de dev
 uv run alembic upgrade head
 uv run python -m app.scripts.seed
-Remove-Item Env:DATABASE_URL, Env:SEED_ADMIN_PASSWORD
+Remove-Item Env:DATABASE_URL, Env:SEED_ADMIN_EMAIL, Env:SEED_ADMIN_REGISTRATION, Env:SEED_ADMIN_PASSWORD
 
 az postgres flexible-server firewall-rule delete -g $RG -n $PG --rule-name meu-ip --yes
 ```
-- O e-mail e a matrícula do admin vêm do seu `.env` (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_REGISTRATION`).
-- O seed é idempotente: rodar de novo não duplica nem troca a senha.
+- As variáveis `$env:` valem só para estes comandos: têm prioridade sobre o `.env` e somem com o
+  `Remove-Item`.
+- `alembic upgrade head` termina com `Running upgrade -> 0001`. O seed termina com
+  `Seed criou: ...`, listando as 15 espécies, os locais e o admin.
+- O seed é idempotente: rodar de novo não duplica nada nem troca a senha do admin.
 
 ## 6. Ambiente e app do Container Apps
 ```powershell
@@ -171,6 +222,25 @@ az containerapp revision list -g $RG -n $APP -o table        # revisões e estad
 az group delete -n $RG --yes
 ```
 O banco vai junto, sem volta. Faça um `pg_dump` antes se os dados importarem.
+
+## 12. Deu erro? Veja aqui
+| Sintoma | Causa provável | O que fazer |
+|---|---|---|
+| `RequestDisallowedByAzure` ou "location is restricted" | Região bloqueada para a assinatura de estudante | Troque `$LOCATION` e repita o comando. Banco e API na mesma região |
+| `'containerapp' is misspelled or not recognized` | Extensão da CLI não instalada | `az extension add --name containerapp --upgrade` |
+| `MissingSubscriptionRegistration` | Provedor ainda não registrado | Rode os `az provider register` da seção 0 e espere alguns minutos. Confira com `az provider show -n Microsoft.App --query registrationState` |
+| "server name already exists" ao criar o banco | `$PG` é único no Azure inteiro | Troque o sufixo do nome e repita |
+| Senha recusada ao criar o banco | Regra de complexidade | 8 a 128 caracteres, com pelo menos 3 de: maiúscula, minúscula, número, símbolo |
+| `JWT_SECRET fraco` ou `Field required` ao rodar as migrations | `.env` local ausente ou com `troque-isto` | Prepare o `.env` (ver "Antes de começar") |
+| `alembic upgrade` fica parado e dá timeout | Seu IP não está no firewall (ou mudou) | Recrie a regra `meu-ip` (seção 3) com o IP atual |
+| `password authentication failed` | Senha errada ou sem codificação na URL | Refaça a seção 4: a senha passa por `EscapeDataString` |
+| App sem réplica rodando; logs com `unauthorized` ou `manifest unknown` | PAT errado ou sem `read:packages`, ou tag inexistente | Confira a tag em *Packages*. Atualize a credencial com `az containerapp registry set -g $RG -n $APP --server ghcr.io --username <usuario> --password <PAT>` |
+| `/monitoramento/status` responde 503 com `database: unavailable` | A API não alcança o banco | Confira no firewall do banco a regra criada pelo `--public-access 0.0.0.0` (acesso de serviços do Azure). Corrija o secret: `az containerapp secret set -g $RG -n $APP --secrets "database-url=$DATABASE_URL"` e depois `az containerapp update -g $RG -n $APP --revision-suffix fix1` |
+| A primeira requisição demora de 10 a 30 s | Cold start: o app escala a zero quando ninguém usa | Normal. Para evitar, use `--min-replicas 1`, mas isso gasta crédito |
+| Erro de CORS no console do navegador | Origem do site fora do `CORS_ORIGINS` | `az containerapp update -g $RG -n $APP --set-env-vars "CORS_ORIGINS=https://mplihd.github.io,http://localhost:5173"` |
+| Login no site dá 401 `invalid_credentials` | Admin de produção não foi criado | Refaça a seção 5 com as variáveis `SEED_ADMIN_*`. Ele não é criado com a senha `troque-isto` |
+
+Para qualquer outro erro do app, comece pelos logs (seção 9).
 
 ## Próximos passos possíveis
 - **Deploy automático:** acrescentar ao CI um passo `az containerapp update` com login no Azure
