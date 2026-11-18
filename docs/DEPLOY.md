@@ -122,7 +122,7 @@ Tudo fica dentro desse grupo. Para apagar tudo depois, veja a seção 11.
 az postgres flexible-server create -g $RG -n $PG -l $LOCATION `
   --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16 `
   --admin-user $PG_USER --admin-password $PG_PASS `
-  --public-access 0.0.0.0 --yes
+  --public-access 0.0.0.0 --yes -o none
 
 az postgres flexible-server db create -g $RG -s $PG -d reo
 
@@ -131,6 +131,8 @@ $MYIP = Invoke-RestMethod https://api.ipify.org
 az postgres flexible-server firewall-rule create -g $RG -n $PG `
   --rule-name meu-ip --start-ip-address $MYIP --end-ip-address $MYIP
 ```
+- `-o none` esconde a resposta do `create`, que traz a senha do banco em texto (`password` e
+  `connectionString`). Erros continuam aparecendo. Leva de 5 a 10 minutos.
 - `--public-access 0.0.0.0` libera o acesso **a partir de serviços do Azure**, como o Container
   Apps. Não libera a internet inteira.
 - **Não troque o SKU:** só o `Standard_B1ms` com até 32 GB está na camada gratuita.
