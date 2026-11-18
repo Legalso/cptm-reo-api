@@ -85,11 +85,15 @@ $RG       = "rg-reo"
 $LOCATION = "brazilsouth"         # ver "Região" logo abaixo
 $PG       = "reo-db-caio"         # nome único no Azure inteiro (só minúsculas, números e -)
 $PG_USER  = "reoadmin"
-$PG_PASS  = "<senha forte do banco>"
+$PG_PASS  = [Net.NetworkCredential]::new("", (Read-Host "Senha do banco" -AsSecureString)).Password
 $ENVNAME  = "reo-env"
 $APP      = "reo-api"
 $IMAGE    = "ghcr.io/legalso/cptm-reo-api:sha-<commit>"   # tag publicada pelo CI
 ```
+
+**Senhas e token são digitados, não colados no comando.** A linha do `$PG_PASS` abre um prompt
+que esconde o que você digita (ou cola). Assim a senha não aparece na tela nem fica gravada no
+histórico do PowerShell. O mesmo vale para a senha do admin (seção 5) e o token do GitHub (seção 6).
 
 **Use a mesma janela do PowerShell do começo ao fim.** As variáveis só existem na janela onde
 foram criadas. Se fechar, cole de novo este bloco e o da seção 4 antes de continuar. Sem isso, os
@@ -143,7 +147,8 @@ $DATABASE_URL = "postgresql+asyncpg://${PG_USER}:${PG_PASS_URL}@$PG.postgres.dat
 $env:DATABASE_URL = $DATABASE_URL
 $env:SEED_ADMIN_EMAIL = "<e-mail do admin de produção>"
 $env:SEED_ADMIN_REGISTRATION = "<matrícula do admin, ex.: ADM-0001>"
-$env:SEED_ADMIN_PASSWORD = "<senha do admin de produção>"   # não use a do .env de dev
+# Senha do admin de produção: não use a do .env de dev
+$env:SEED_ADMIN_PASSWORD = [Net.NetworkCredential]::new("", (Read-Host "Senha do admin" -AsSecureString)).Password
 uv run alembic upgrade head
 uv run python -m app.scripts.seed
 Remove-Item Env:DATABASE_URL, Env:SEED_ADMIN_EMAIL, Env:SEED_ADMIN_REGISTRATION, Env:SEED_ADMIN_PASSWORD
@@ -161,10 +166,12 @@ az postgres flexible-server firewall-rule delete -g $RG -n $PG --rule-name meu-i
 az containerapp env create -g $RG -n $ENVNAME -l $LOCATION
 
 $JWT = uv run python -c "import secrets; print(secrets.token_urlsafe(64))"
+$GH_USER = "<seu-usuario-github>"
+$GH_PAT  = [Net.NetworkCredential]::new("", (Read-Host "Token do GitHub (read:packages)" -AsSecureString)).Password
 
 az containerapp create -g $RG -n $APP --environment $ENVNAME `
   --image $IMAGE `
-  --registry-server ghcr.io --registry-username <seu-usuario-github> --registry-password <PAT read:packages> `
+  --registry-server ghcr.io --registry-username $GH_USER --registry-password $GH_PAT `
   --ingress external --target-port 4000 `
   --min-replicas 0 --max-replicas 1 --cpu 0.25 --memory 0.5Gi `
   --secrets "jwt-secret=$JWT" "database-url=$DATABASE_URL" `
@@ -173,6 +180,10 @@ az containerapp create -g $RG -n $APP --environment $ENVNAME `
     "CORS_ORIGINS=https://mplihd.github.io,http://localhost:5173" `
     INVITE_BASE_URL=https://mplihd.github.io
 ```
+- **Token do GitHub:** o Container Apps guarda o token como *secret* e o usa para baixar a imagem
+  privada do ghcr.io a cada nova réplica. Depois deste comando ele não é mais digitado. Se o token
+  vencer, gere outro e rode
+  `az containerapp registry set -g $RG -n $APP --server ghcr.io --username $GH_USER --password $GH_PAT`.
 - **Segredos:** `JWT_SECRET` e `DATABASE_URL` entram como *secrets* do Container Apps, nunca como
   variável em texto. Trocar o `JWT_SECRET` desloga todo mundo.
 - **CORS:** `CORS_ORIGINS` precisa listar toda origem que chama a API. Inclua a do app Expo
@@ -243,7 +254,7 @@ O banco vai junto, sem volta. Faça um `pg_dump` antes se os dados importarem.
 | `JWT_SECRET fraco` ou `Field required` ao rodar as migrations | `.env` local ausente ou com `troque-isto` | Prepare o `.env` (ver "Antes de começar") |
 | `alembic upgrade` fica parado e dá timeout | Seu IP não está no firewall (ou mudou) | Recrie a regra `meu-ip` (seção 3) com o IP atual |
 | `password authentication failed` | Senha errada ou sem codificação na URL | Refaça a seção 4: a senha passa por `EscapeDataString` |
-| App sem réplica rodando; logs com `unauthorized` ou `manifest unknown` | PAT errado ou sem `read:packages`, ou tag inexistente | Confira a tag em *Packages*. Atualize a credencial com `az containerapp registry set -g $RG -n $APP --server ghcr.io --username <usuario> --password <PAT>` |
+| App sem réplica rodando; logs com `unauthorized` ou `manifest unknown` | PAT errado ou sem `read:packages`, ou tag inexistente | Confira a tag em *Packages*. Atualize a credencial com `az containerapp registry set -g $RG -n $APP --server ghcr.io --username $GH_USER --password $GH_PAT` (preencha as duas variáveis como na seção 6) |
 | `/monitoramento/status` responde 503 com `database: unavailable` | A API não alcança o banco | Confira no firewall do banco a regra criada pelo `--public-access 0.0.0.0` (acesso de serviços do Azure). Corrija o secret: `az containerapp secret set -g $RG -n $APP --secrets "database-url=$DATABASE_URL"` e depois `az containerapp update -g $RG -n $APP --revision-suffix fix1` |
 | A primeira requisição demora de 10 a 30 s | Cold start: o app escala a zero quando ninguém usa | Normal. Para evitar, use `--min-replicas 1`, mas isso gasta crédito |
 | Erro de CORS no console do navegador | Origem do site fora do `CORS_ORIGINS` | `az containerapp update -g $RG -n $APP --set-env-vars "CORS_ORIGINS=https://mplihd.github.io,http://localhost:5173"` |
