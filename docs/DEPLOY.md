@@ -82,7 +82,7 @@ carregam a configuração da API. Sem um `JWT_SECRET` válido, eles param antes 
 ## 1. Variáveis
 ```powershell
 $RG       = "rg-reo"
-$LOCATION = "eastus2"             # ver "Região" logo abaixo
+$LOCATION = "brazilsouth"         # ver "Região" logo abaixo
 $PG       = "reo-db-caio"         # nome único no Azure inteiro (só minúsculas, números e -)
 $PG_USER  = "reoadmin"
 $PG_PASS  = "<senha forte do banco>"
@@ -95,10 +95,17 @@ $IMAGE    = "ghcr.io/legalso/cptm-reo-api:sha-<commit>"   # tag publicada pelo C
 foram criadas. Se fechar, cole de novo este bloco e o da seção 4 antes de continuar. Sem isso, os
 comandos seguintes falham com mensagens confusas (por exemplo, nome de recurso vazio).
 
-**Região:** a assinatura de estudante só deixa criar recursos em algumas regiões. Se algum
-comando falhar com `RequestDisallowedByAzure` ou "location is restricted", troque `$LOCATION`
-(por exemplo `eastus2`, `centralus` ou `brazilsouth`) e repita. Banco e API devem ficar na
-**mesma região**.
+**Região:** a assinatura de estudante só deixa criar recursos em algumas regiões, definidas pela
+política *Allowed resource deployment regions*. Para ver quais são as da sua assinatura:
+```powershell
+az policy assignment list --disable-scope-strict-match `
+  --query "[].parameters.listOfAllowedLocations.value" -o tsv
+```
+Em 17/11/2026 a assinatura do SENAC liberava `brazilsouth`, `canadacentral`, `francecentral`,
+`spaincentral` e `southafricanorth` (as regiões dos EUA, como `eastus2`, ficam bloqueadas).
+O padrão é `brazilsouth` por ser a mais perto de São Paulo. Se algum comando falhar com
+`RequestDisallowedByAzure` ou "location is restricted", troque `$LOCATION` por outra região da
+lista e repita. Banco e API devem ficar na **mesma região**.
 
 ## 2. Grupo de recursos
 ```powershell
