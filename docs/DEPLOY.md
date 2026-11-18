@@ -233,7 +233,9 @@ O banco vai junto, sem volta. Faça um `pg_dump` antes se os dados importarem.
 ## 12. Deu erro? Veja aqui
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
-| `RequestDisallowedByAzure` ou "location is restricted" | Região bloqueada para a assinatura de estudante | Troque `$LOCATION` e repita o comando. Banco e API na mesma região |
+| `RequestDisallowedByAzure` ou "location is restricted" | Região bloqueada para a assinatura de estudante | Troque `$LOCATION` por uma região liberada (ver "Região", seção 1) e repita o comando. Banco e API na mesma região |
+| "No subscriptions found" logo depois do `az login` | Entrou com a conta pessoal, não a da faculdade | `az login` de novo e escolha a conta da faculdade, onde está a Azure for Students |
+| `AADSTS70043` / "sign-in frequency checks by conditional access" | A faculdade derruba a sessão da CLI a cada 12 h | `az login` de novo (com a conta da faculdade). As variáveis da janela continuam valendo |
 | `'containerapp' is misspelled or not recognized` | Extensão da CLI não instalada | `az extension add --name containerapp --upgrade` |
 | `MissingSubscriptionRegistration` | Provedor ainda não registrado | Rode os `az provider register` da seção 0 e espere alguns minutos. Confira com `az provider show -n Microsoft.App --query registrationState` |
 | "server name already exists" ao criar o banco | `$PG` é único no Azure inteiro | Troque o sufixo do nome e repita |
