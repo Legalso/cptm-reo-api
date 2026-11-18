@@ -124,12 +124,12 @@ az postgres flexible-server create -g $RG -n $PG -l $LOCATION `
   --admin-user $PG_USER --admin-password $PG_PASS `
   --public-access 0.0.0.0 --yes -o none
 
-az postgres flexible-server db create -g $RG -s $PG -d reo
+az postgres flexible-server db create -g $RG -s $PG -n reo -o table
 
 # Libera o seu IP só durante as migrations (a regra é removida na seção 5)
 $MYIP = Invoke-RestMethod https://api.ipify.org
-az postgres flexible-server firewall-rule create -g $RG -n $PG `
-  --rule-name meu-ip --start-ip-address $MYIP --end-ip-address $MYIP
+az postgres flexible-server firewall-rule create -g $RG -s $PG -n meu-ip `
+  --start-ip-address $MYIP --end-ip-address $MYIP -o table
 ```
 - `-o none` esconde a resposta do `create`, que traz a senha do banco em texto (`password` e
   `connectionString`). Erros continuam aparecendo. Leva de 5 a 10 minutos.
@@ -155,7 +155,7 @@ uv run alembic upgrade head
 uv run python -m app.scripts.seed
 Remove-Item Env:DATABASE_URL, Env:SEED_ADMIN_EMAIL, Env:SEED_ADMIN_REGISTRATION, Env:SEED_ADMIN_PASSWORD
 
-az postgres flexible-server firewall-rule delete -g $RG -n $PG --rule-name meu-ip --yes
+az postgres flexible-server firewall-rule delete -g $RG -s $PG -n meu-ip --yes
 ```
 - As variáveis `$env:` valem só para estes comandos: têm prioridade sobre o `.env` e somem com o
   `Remove-Item`.
@@ -249,6 +249,7 @@ O banco vai junto, sem volta. Faça um `pg_dump` antes se os dados importarem.
 | `RequestDisallowedByAzure` ou "location is restricted" | Região bloqueada para a assinatura de estudante | Troque `$LOCATION` por uma região liberada (ver "Região", seção 1) e repita o comando. Banco e API na mesma região |
 | "No subscriptions found" logo depois do `az login` | Entrou com a conta pessoal, não a da faculdade | `az login` de novo e escolha a conta da faculdade, onde está a Azure for Students |
 | `AADSTS70043` / "sign-in frequency checks by conditional access" | A faculdade derruba a sessão da CLI a cada 12 h | `az login` de novo (com a conta da faculdade). As variáveis da janela continuam valendo |
+| `the following arguments are required: --server-name/-s` | Sintaxe antiga da CLI (`-n $PG --rule-name`, `-d reo`) | Nas versões atuais, `-s` é o servidor e `-n` é o nome do database ou da regra. Use os comandos deste guia |
 | `'containerapp' is misspelled or not recognized` | Extensão da CLI não instalada | `az extension add --name containerapp --upgrade` |
 | `MissingSubscriptionRegistration` | Provedor ainda não registrado | Rode os `az provider register` da seção 0 e espere alguns minutos. Confira com `az provider show -n Microsoft.App --query registrationState` |
 | "server name already exists" ao criar o banco | `$PG` é único no Azure inteiro | Troque o sufixo do nome e repita |
