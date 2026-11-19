@@ -180,8 +180,10 @@ az containerapp create -g $RG -n $APP --environment $ENVNAME `
   --env-vars APP_ENV=prod LOG_LEVEL=INFO `
     JWT_SECRET=secretref:jwt-secret DATABASE_URL=secretref:database-url `
     "CORS_ORIGINS=https://mplihd.github.io,http://localhost:5173" `
-    INVITE_BASE_URL=https://mplihd.github.io
+    "INVITE_BASE_URL=https://mplihd.github.io/frontend-reo.github.io/#"
 ```
+- **Link de convite:** o site é estático (GitHub Pages) e usa rota por `#`, então a base termina
+  em `/#` e inclui o caminho do repo. Com só `https://mplihd.github.io` o convite cai num 404.
 - **Token do GitHub:** o Container Apps guarda o token como *secret* e o usa para baixar a imagem
   privada do ghcr.io a cada nova réplica. Depois deste comando ele não é mais digitado. Se o token
   vencer, gere outro e rode
@@ -260,6 +262,7 @@ O banco vai junto, sem volta. Faça um `pg_dump` antes se os dados importarem.
 | App sem réplica rodando; logs com `unauthorized` ou `manifest unknown` | PAT errado ou sem `read:packages`, ou tag inexistente | Confira a tag em *Packages*. Atualize a credencial com `az containerapp registry set -g $RG -n $APP --server ghcr.io --username $GH_USER --password $GH_PAT` (preencha as duas variáveis como na seção 6) |
 | `/monitoramento/status` responde 503 com `database: unavailable` | A API não alcança o banco | Confira no firewall do banco a regra criada pelo `--public-access 0.0.0.0` (acesso de serviços do Azure). Corrija o secret: `az containerapp secret set -g $RG -n $APP --secrets "database-url=$DATABASE_URL"` e depois `az containerapp update -g $RG -n $APP --revision-suffix fix1` |
 | A primeira requisição demora de 10 a 30 s | Cold start: o app escala a zero quando ninguém usa | Normal. Para evitar, use `--min-replicas 1`, mas isso gasta crédito |
+| Link de convite abre 404 | `INVITE_BASE_URL` sem o caminho do repo ou sem o `#` | `az containerapp update -g $RG -n $APP --set-env-vars "INVITE_BASE_URL=https://mplihd.github.io/frontend-reo.github.io/#"` |
 | Erro de CORS no console do navegador | Origem do site fora do `CORS_ORIGINS` | `az containerapp update -g $RG -n $APP --set-env-vars "CORS_ORIGINS=https://mplihd.github.io,http://localhost:5173"` |
 | Login no site dá 401 `invalid_credentials` | Admin de produção não foi criado | Refaça a seção 5 com as variáveis `SEED_ADMIN_*`. Ele não é criado com a senha `troque-isto` |
 
