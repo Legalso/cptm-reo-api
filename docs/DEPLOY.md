@@ -147,8 +147,8 @@ $DATABASE_URL = "postgresql+asyncpg://${PG_USER}:${PG_PASS_URL}@$PG.postgres.dat
 ## 5. Migrations e seed (da sua máquina, na raiz do repositório)
 ```powershell
 $env:DATABASE_URL = $DATABASE_URL
-$env:SEED_ADMIN_EMAIL = "<e-mail do admin de produção>"
-$env:SEED_ADMIN_REGISTRATION = "<matrícula do admin, ex.: ADM-0001>"
+$env:SEED_ADMIN_EMAIL = Read-Host "E-mail do admin de produção"
+$env:SEED_ADMIN_REGISTRATION = Read-Host "Matrícula do admin (ex.: ADM-0001)"
 # Senha do admin de produção: não use a do .env de dev
 $env:SEED_ADMIN_PASSWORD = [Net.NetworkCredential]::new("", (Read-Host "Senha do admin" -AsSecureString)).Password
 uv run alembic upgrade head
