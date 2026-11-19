@@ -82,23 +82,34 @@ carregam a configuração da API. Sem um `JWT_SECRET` válido, eles param antes 
 ## 1. Variáveis
 ```powershell
 $RG       = "rg-reo"
-$LOCATION = "eastus2"             # ver "Região" logo abaixo
+$LOCATION = "brazilsouth"         # ver "Região" logo abaixo
 $PG       = "reo-db-caio"         # nome único no Azure inteiro (só minúsculas, números e -)
 $PG_USER  = "reoadmin"
-$PG_PASS  = "<senha forte do banco>"
+$PG_PASS  = [Net.NetworkCredential]::new("", (Read-Host "Senha do banco" -AsSecureString)).Password
 $ENVNAME  = "reo-env"
 $APP      = "reo-api"
 $IMAGE    = "ghcr.io/legalso/cptm-reo-api:sha-<commit>"   # tag publicada pelo CI
 ```
 
+**Senhas e token são digitados, não colados no comando.** A linha do `$PG_PASS` abre um prompt
+que esconde o que você digita (ou cola). Assim a senha não aparece na tela nem fica gravada no
+histórico do PowerShell. O mesmo vale para a senha do admin (seção 5) e o token do GitHub (seção 6).
+
 **Use a mesma janela do PowerShell do começo ao fim.** As variáveis só existem na janela onde
 foram criadas. Se fechar, cole de novo este bloco e o da seção 4 antes de continuar. Sem isso, os
 comandos seguintes falham com mensagens confusas (por exemplo, nome de recurso vazio).
 
-**Região:** a assinatura de estudante só deixa criar recursos em algumas regiões. Se algum
-comando falhar com `RequestDisallowedByAzure` ou "location is restricted", troque `$LOCATION`
-(por exemplo `eastus2`, `centralus` ou `brazilsouth`) e repita. Banco e API devem ficar na
-**mesma região**.
+**Região:** a assinatura de estudante só deixa criar recursos em algumas regiões, definidas pela
+política *Allowed resource deployment regions*. Para ver quais são as da sua assinatura:
+```powershell
+az policy assignment list --disable-scope-strict-match `
+  --query "[].parameters.listOfAllowedLocations.value" -o tsv
+```
+Em 17/11/2026 a assinatura do SENAC liberava `brazilsouth`, `canadacentral`, `francecentral`,
+`spaincentral` e `southafricanorth` (as regiões dos EUA, como `eastus2`, ficam bloqueadas).
+O padrão é `brazilsouth` por ser a mais perto de São Paulo. Se algum comando falhar com
+`RequestDisallowedByAzure` ou "location is restricted", troque `$LOCATION` por outra região da
+lista e repita. Banco e API devem ficar na **mesma região**.
 
 ## 2. Grupo de recursos
 ```powershell
@@ -111,15 +122,17 @@ Tudo fica dentro desse grupo. Para apagar tudo depois, veja a seção 11.
 az postgres flexible-server create -g $RG -n $PG -l $LOCATION `
   --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16 `
   --admin-user $PG_USER --admin-password $PG_PASS `
-  --public-access 0.0.0.0 --yes
+  --public-access 0.0.0.0 --yes -o none
 
-az postgres flexible-server db create -g $RG -s $PG -d reo
+az postgres flexible-server db create -g $RG -s $PG -n reo -o table
 
 # Libera o seu IP só durante as migrations (a regra é removida na seção 5)
 $MYIP = Invoke-RestMethod https://api.ipify.org
-az postgres flexible-server firewall-rule create -g $RG -n $PG `
-  --rule-name meu-ip --start-ip-address $MYIP --end-ip-address $MYIP
+az postgres flexible-server firewall-rule create -g $RG -s $PG -n meu-ip `
+  --start-ip-address $MYIP --end-ip-address $MYIP -o table
 ```
+- `-o none` esconde a resposta do `create`, que traz a senha do banco em texto (`password` e
+  `connectionString`). Erros continuam aparecendo. Leva de 5 a 10 minutos.
 - `--public-access 0.0.0.0` libera o acesso **a partir de serviços do Azure**, como o Container
   Apps. Não libera a internet inteira.
 - **Não troque o SKU:** só o `Standard_B1ms` com até 32 GB está na camada gratuita.
@@ -134,14 +147,15 @@ $DATABASE_URL = "postgresql+asyncpg://${PG_USER}:${PG_PASS_URL}@$PG.postgres.dat
 ## 5. Migrations e seed (da sua máquina, na raiz do repositório)
 ```powershell
 $env:DATABASE_URL = $DATABASE_URL
-$env:SEED_ADMIN_EMAIL = "<e-mail do admin de produção>"
-$env:SEED_ADMIN_REGISTRATION = "<matrícula do admin, ex.: ADM-0001>"
-$env:SEED_ADMIN_PASSWORD = "<senha do admin de produção>"   # não use a do .env de dev
+$env:SEED_ADMIN_EMAIL = Read-Host "E-mail do admin de produção"
+$env:SEED_ADMIN_REGISTRATION = Read-Host "Matrícula do admin (ex.: ADM-0001)"
+# Senha do admin de produção: não use a do .env de dev
+$env:SEED_ADMIN_PASSWORD = [Net.NetworkCredential]::new("", (Read-Host "Senha do admin" -AsSecureString)).Password
 uv run alembic upgrade head
 uv run python -m app.scripts.seed
 Remove-Item Env:DATABASE_URL, Env:SEED_ADMIN_EMAIL, Env:SEED_ADMIN_REGISTRATION, Env:SEED_ADMIN_PASSWORD
 
-az postgres flexible-server firewall-rule delete -g $RG -n $PG --rule-name meu-ip --yes
+az postgres flexible-server firewall-rule delete -g $RG -s $PG -n meu-ip --yes
 ```
 - As variáveis `$env:` valem só para estes comandos: têm prioridade sobre o `.env` e somem com o
   `Remove-Item`.
@@ -154,10 +168,12 @@ az postgres flexible-server firewall-rule delete -g $RG -n $PG --rule-name meu-i
 az containerapp env create -g $RG -n $ENVNAME -l $LOCATION
 
 $JWT = uv run python -c "import secrets; print(secrets.token_urlsafe(64))"
+$GH_USER = "<seu-usuario-github>"
+$GH_PAT  = [Net.NetworkCredential]::new("", (Read-Host "Token do GitHub (read:packages)" -AsSecureString)).Password
 
 az containerapp create -g $RG -n $APP --environment $ENVNAME `
   --image $IMAGE `
-  --registry-server ghcr.io --registry-username <seu-usuario-github> --registry-password <PAT read:packages> `
+  --registry-server ghcr.io --registry-username $GH_USER --registry-password $GH_PAT `
   --ingress external --target-port 4000 `
   --min-replicas 0 --max-replicas 1 --cpu 0.25 --memory 0.5Gi `
   --secrets "jwt-secret=$JWT" "database-url=$DATABASE_URL" `
@@ -166,6 +182,10 @@ az containerapp create -g $RG -n $APP --environment $ENVNAME `
     "CORS_ORIGINS=https://mplihd.github.io,http://localhost:5173" `
     INVITE_BASE_URL=https://mplihd.github.io
 ```
+- **Token do GitHub:** o Container Apps guarda o token como *secret* e o usa para baixar a imagem
+  privada do ghcr.io a cada nova réplica. Depois deste comando ele não é mais digitado. Se o token
+  vencer, gere outro e rode
+  `az containerapp registry set -g $RG -n $APP --server ghcr.io --username $GH_USER --password $GH_PAT`.
 - **Segredos:** `JWT_SECRET` e `DATABASE_URL` entram como *secrets* do Container Apps, nunca como
   variável em texto. Trocar o `JWT_SECRET` desloga todo mundo.
 - **CORS:** `CORS_ORIGINS` precisa listar toda origem que chama a API. Inclua a do app Expo
@@ -226,7 +246,10 @@ O banco vai junto, sem volta. Faça um `pg_dump` antes se os dados importarem.
 ## 12. Deu erro? Veja aqui
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
-| `RequestDisallowedByAzure` ou "location is restricted" | Região bloqueada para a assinatura de estudante | Troque `$LOCATION` e repita o comando. Banco e API na mesma região |
+| `RequestDisallowedByAzure` ou "location is restricted" | Região bloqueada para a assinatura de estudante | Troque `$LOCATION` por uma região liberada (ver "Região", seção 1) e repita o comando. Banco e API na mesma região |
+| "No subscriptions found" logo depois do `az login` | Entrou com a conta pessoal, não a da faculdade | `az login` de novo e escolha a conta da faculdade, onde está a Azure for Students |
+| `AADSTS70043` / "sign-in frequency checks by conditional access" | A faculdade derruba a sessão da CLI a cada 12 h | `az login` de novo (com a conta da faculdade). As variáveis da janela continuam valendo |
+| `the following arguments are required: --server-name/-s` | Sintaxe antiga da CLI (`-n $PG --rule-name`, `-d reo`) | Nas versões atuais, `-s` é o servidor e `-n` é o nome do database ou da regra. Use os comandos deste guia |
 | `'containerapp' is misspelled or not recognized` | Extensão da CLI não instalada | `az extension add --name containerapp --upgrade` |
 | `MissingSubscriptionRegistration` | Provedor ainda não registrado | Rode os `az provider register` da seção 0 e espere alguns minutos. Confira com `az provider show -n Microsoft.App --query registrationState` |
 | "server name already exists" ao criar o banco | `$PG` é único no Azure inteiro | Troque o sufixo do nome e repita |
@@ -234,7 +257,7 @@ O banco vai junto, sem volta. Faça um `pg_dump` antes se os dados importarem.
 | `JWT_SECRET fraco` ou `Field required` ao rodar as migrations | `.env` local ausente ou com `troque-isto` | Prepare o `.env` (ver "Antes de começar") |
 | `alembic upgrade` fica parado e dá timeout | Seu IP não está no firewall (ou mudou) | Recrie a regra `meu-ip` (seção 3) com o IP atual |
 | `password authentication failed` | Senha errada ou sem codificação na URL | Refaça a seção 4: a senha passa por `EscapeDataString` |
-| App sem réplica rodando; logs com `unauthorized` ou `manifest unknown` | PAT errado ou sem `read:packages`, ou tag inexistente | Confira a tag em *Packages*. Atualize a credencial com `az containerapp registry set -g $RG -n $APP --server ghcr.io --username <usuario> --password <PAT>` |
+| App sem réplica rodando; logs com `unauthorized` ou `manifest unknown` | PAT errado ou sem `read:packages`, ou tag inexistente | Confira a tag em *Packages*. Atualize a credencial com `az containerapp registry set -g $RG -n $APP --server ghcr.io --username $GH_USER --password $GH_PAT` (preencha as duas variáveis como na seção 6) |
 | `/monitoramento/status` responde 503 com `database: unavailable` | A API não alcança o banco | Confira no firewall do banco a regra criada pelo `--public-access 0.0.0.0` (acesso de serviços do Azure). Corrija o secret: `az containerapp secret set -g $RG -n $APP --secrets "database-url=$DATABASE_URL"` e depois `az containerapp update -g $RG -n $APP --revision-suffix fix1` |
 | A primeira requisição demora de 10 a 30 s | Cold start: o app escala a zero quando ninguém usa | Normal. Para evitar, use `--min-replicas 1`, mas isso gasta crédito |
 | Erro de CORS no console do navegador | Origem do site fora do `CORS_ORIGINS` | `az containerapp update -g $RG -n $APP --set-env-vars "CORS_ORIGINS=https://mplihd.github.io,http://localhost:5173"` |
