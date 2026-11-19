@@ -119,7 +119,11 @@ Sem prefixo; o site concatena `baseUrl + path`. ✱ = path já usado pelo site (
 
 ## Pendências (A DECIDIR no `CONTEXTO.md`)
 Marcadas com `TODO(decidir)` no código: MFA (TOTP × e-mail), credencial offline de 48h,
-envio real do e-mail de convite, conciliação de inventário (contagem física × sistema) e deploy.
+envio real do e-mail de convite e conciliação de inventário (contagem física × sistema).
+
+## Deploy
+Azure Container Apps + PostgreSQL Flexible Server (B1ms). Passo a passo: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+O CI publica a imagem em `ghcr.io/legalso/cptm-reo-api` a cada push na `main`.
 
 ## Equipe
 API: Caio · App: Pina · Site: Matheus
