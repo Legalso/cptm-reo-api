@@ -121,7 +121,7 @@ class InviteRead(BaseModel):
                 "name": "Marcos Vinícius",
                 "role": "tecnico",
                 "token": "eyJhbGciOiJIUzI1NiIs...",
-                "link": "https://mplihd.github.io/convite/eyJhbGciOiJIUzI1NiIs...",
+                "link": "https://mplihd.github.io/frontend-reo.github.io/#/convite/eyJhbGciOiJIUzI1NiIs...",
                 "expires_at": "2026-10-24T22:00:00Z",
             }
         }

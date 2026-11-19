@@ -5,7 +5,7 @@
 API REST do **Projeto REO / CPTM** — rastreio, movimentação, inventário e inspeção digital
 de dormentes ferroviários identificados por RFID. Conecta o app de campo
 ([APP-ProjetoCPTM-REO](https://github.com/1000Tsurus/APP-ProjetoCPTM-REO)) e o site gerencial
-([mpliHD.github.io](https://github.com/mpliHD/mpliHD.github.io)).
+([frontend-reo.github.io](https://github.com/mpliHD/frontend-reo.github.io)).
 
 - Contexto, domínio e contrato: [`docs/CONTEXTO.md`](docs/CONTEXTO.md)
 - Guia para o front (login, erros, paginação, sync): [`docs/INTEGRACAO.md`](docs/INTEGRACAO.md)
@@ -65,7 +65,7 @@ O CI (`.github/workflows/ci.yml`) roda em todo PR e push na `main`:
 | `JWT_ACCESS_MINUTES` | `15` | Validade do access token |
 | `JWT_REFRESH_DAYS` | `7` | Validade do refresh token |
 | `INVITE_TOKEN_HOURS` | `72` | Validade do convite |
-| `INVITE_BASE_URL` | `http://localhost:5173` | Base do link de convite (`<base>/convite/<token>`) |
+| `INVITE_BASE_URL` | `http://localhost:5173` | Base do link de convite (`<base>/convite/<token>`). O site usa rota por `#`: em dev `http://localhost:5173/app.html#`, em produção `https://mplihd.github.io/frontend-reo.github.io/#` |
 | `CORS_ORIGINS` | — | Origens liberadas, separadas por vírgula |
 | `SEED_ADMIN_NAME` / `_EMAIL` / `_REGISTRATION` / `_PASSWORD` | — | Admin criado pelo seed (não cria com senha `troque-isto`) |
 

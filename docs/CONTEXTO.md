@@ -15,7 +15,7 @@ movimentações, inventário e inspeções; o site mostra a visão gerencial.
 |---|---|---|
 | API (este repo) | Caio | `Legalso/cptm-reo-api` |
 | App mobile (Expo) | Pina | `1000Tsurus/APP-ProjetoCPTM-REO` |
-| Site gerencial (React/Vite) | Matheus | `mpliHD/mpliHD.github.io` |
+| Site gerencial (React/Vite) | Matheus | `mpliHD/frontend-reo.github.io` (Pages: `mplihd.github.io/frontend-reo.github.io`) |
 
 ## Fora do escopo (por enquanto)
 IA / análise de imagem, data lake, impressora térmica, QR Code e NFC (só RFID).
