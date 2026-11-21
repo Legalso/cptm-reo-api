@@ -127,6 +127,8 @@ async def test_logs_permissions_and_validation(client: AsyncClient, make_user: U
     tech = auth_headers(await make_user(Role.TECHNICIAN))
     assert (await client.get("/logs", headers=tech)).status_code == 403
     supervisor = auth_headers(await make_user(Role.SUPERVISOR))
-    assert (await client.get("/logs", headers=supervisor)).status_code == 200
-    bad = await client.get("/logs", params={"user_id": "nao-e-uuid"}, headers=supervisor)
+    assert (await client.get("/logs", headers=supervisor)).status_code == 403
+    admin = auth_headers(await make_user(Role.ADMIN))
+    assert (await client.get("/logs", headers=admin)).status_code == 200
+    bad = await client.get("/logs", params={"user_id": "nao-e-uuid"}, headers=admin)
     assert bad.status_code == 422
