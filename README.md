@@ -83,7 +83,7 @@ O CI (`.github/workflows/ci.yml`) roda em todo PR e push na `main`:
 | `operador` | Cadastrar dormente, movimentar, posicionar, inventário, ocorrência, sync; consultar |
 | `tecnico` | Tudo do operador + inspeções + status manual (quarentena, em via, descarte) |
 | `especialista` | Tudo do técnico + catálogo de espécies + corrigir espécie do dormente |
-| `supervisor` | Leitura total, indicadores, logs, usuários (leitura), manter locais |
+| `supervisor` | Leitura total, indicadores, usuários (leitura), manter locais |
 | `admin` | Tudo, incluindo usuários, papéis e convites |
 
 ## Rotas
@@ -114,7 +114,7 @@ Sem prefixo; o site concatena `baseUrl + path`. ✱ = path já usado pelo site (
 | POST | `/sincronizacao/replicar` ✱ | operador+ | Lote offline, resultado por item |
 | GET | `/sincronizacao/status` ✱ | logado | Último lote do usuário (`?device_id=`) |
 | GET | `/indicadores` | supervisor, admin | Dashboard (`?de=&ate=`, padrão 7 dias) |
-| GET | `/logs` ✱ | supervisor, admin | Auditoria (filtros usuário, entidade, ação, período) |
+| GET | `/logs` ✱ | admin | Auditoria (filtros usuário, entidade, ação, período) |
 | GET | `/monitoramento/status` ✱ | público | Saúde: API, banco, versão |
 
 ## Pendências (A DECIDIR no `CONTEXTO.md`)

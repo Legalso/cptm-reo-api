@@ -159,7 +159,7 @@ cache; se isso pesar, vale embutir resumos (tag, nome do local, nome do usuário
 | `POST /sincronizacao/replicar` | igual | |
 | `GET /sincronizacao/status` | igual | Exige login |
 | `GET /monitoramento/status` | igual | Sem login; `email_configured` indica e-mail real (hoje `false`); `503` se o banco cair |
-| `GET /logs` | igual | Paginado; supervisor e admin |
+| `GET /logs` | igual | Paginado; só admin |
 
 Rotas novas úteis para o site: `/indicadores` (dashboard), `/dormentes` (+ `/tag/{tag}`,
 `/{id}/historico`), `/especies`, `/locais`, `/inspecoes`, `/estoque/movimentacoes`,

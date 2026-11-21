@@ -27,7 +27,7 @@ Hospedagem: Azure for Students (decidido em 02/11/2026 — ver "Decisões tomada
 | `operador` | Registrar entrada/retirada/transferência, inventário, ocorrência; consultar dormentes |
 | `tecnico` | Tudo do operador + registrar inspeções |
 | `especialista` | Tudo do técnico + classificar/revisar espécie de madeira; manter catálogo de espécies |
-| `supervisor` | Leitura total, indicadores, logs de auditoria; manter locais |
+| `supervisor` | Leitura total, indicadores; manter locais |
 | `admin` | Tudo, incluindo usuários e papéis |
 
 Plano de inspeção de referência: identificação na entrada (operador), inspeção visual
@@ -90,7 +90,7 @@ Prefixo: nenhum (o site concatena `baseUrl + path`). Porta local: **4000**.
 | POST | `/sincronizacao/replicar` | 1 | |
 | GET | `/sincronizacao/status` | 1 | Último lote do usuário/dispositivo |
 | GET | `/monitoramento/status` | 1 | Health: API, banco, versão. Sem auth |
-| GET | `/logs` | 1 | supervisor, admin; filtros por usuário/entidade/período |
+| GET | `/logs` | 1 | só admin; filtros por usuário/entidade/período |
 
 ### Novas
 | Método | Path | Fase |
