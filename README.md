@@ -72,7 +72,9 @@ O CI (`.github/workflows/ci.yml`) roda em todo PR e push na `main`:
 ## Dados do seed
 `uv run python -m app.scripts.seed` é idempotente: só cria o que falta e nunca sobrescreve.
 
-- **Espécies** da ficha da Rua 08: 01, 04, 05, 07, 09, 10, 11, 12, 13, 15, 17, 19, 20, 21, 22.
+- **Espécies** da ficha da Rua 08: 01, 04, 05, 07, 09, 10, 11, 12, 13, 15, 17, 19, 20, 21, 22,
+  com nome científico e nome popular (lista em `docs/CONTEXTO.md`). Em bancos antigos, o seed
+  completa nomes populares vazios, sem trocar os já preenchidos.
 - **Locais:** pátio principal `Pátio Av. Raimundo Pereira de Magalhães, 200` com a rua `Rua 08`,
   e `Pátio Presidente Altino` com `Rua 01` e `Rua 02`. Em bancos antigos, o pátio `TG – Três Guri`
   é renomeado para o principal (uma vez, com registro na auditoria), sem criar duplicata.

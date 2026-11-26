@@ -36,6 +36,8 @@ async def test_seed_is_idempotent(session: AsyncSession) -> None:
     street = await session.scalar(select(Location).where(Location.name == "Rua 08"))
     main = await session.scalar(select(Location).where(Location.name == MAIN_YARD))
     assert street is not None and main is not None and street.parent_id == main.id
+    jatoba = await session.scalar(select(WoodSpecies).where(WoodSpecies.code == "13"))
+    assert jatoba is not None and jatoba.common_name == "Jatobá"
     admin = await session.scalar(select(User).where(User.email == "seed.admin@reo.local"))
     assert admin is not None
     assert admin.registration == "ADM-9"
@@ -68,6 +70,31 @@ async def test_seed_renames_legacy_yard_instead_of_duplicating(session: AsyncSes
     )
     assert log is not None
     assert log.before is not None and log.before["name"] == "TG – Três Guri"
+
+
+async def test_seed_fills_only_empty_common_names(session: AsyncSession) -> None:
+    """Banco antigo: completa nome popular vazio, com auditoria, sem trocar o já preenchido."""
+    empty = WoodSpecies(code="01", scientific_name="Apuleia leiocarpa")
+    edited = WoodSpecies(
+        code="13", scientific_name="Hymenaea courbaril", common_name="Jatobá-mirim"
+    )
+    session.add_all([empty, edited])
+    await session.flush()
+
+    first = await run_seed(session, get_settings())
+    second = await run_seed(session, get_settings())
+
+    await session.refresh(empty)
+    await session.refresh(edited)
+    assert empty.common_name == "Garapa"
+    assert edited.common_name == "Jatobá-mirim"
+    assert "nome popular da espécie 01" in first.created
+    assert not any("espécie 13" in item for item in first.created)
+    assert second.created == []
+    log = await session.scalar(
+        select(AuditLog).where(AuditLog.action == "seed_fill", AuditLog.entity_id == empty.id)
+    )
+    assert log is not None and log.before is not None and log.before["common_name"] is None
 
 
 async def test_seed_skips_admin_with_example_password(session: AsyncSession) -> None:
