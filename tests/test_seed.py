@@ -4,10 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.security import verify_password
+from app.models.audit_log import AuditLog
+from app.models.enums import LocationKind
 from app.models.location import Location
 from app.models.species import WoodSpecies
 from app.models.user import User
-from app.scripts.seed import SPECIES, run_seed
+from app.scripts.seed import MAIN_YARD, SPECIES, YARDS, run_seed
+
+LOCATIONS_CREATED = len(YARDS) + sum(len(streets) for streets in YARDS.values())
 
 
 async def test_seed_is_idempotent(session: AsyncSession) -> None:
@@ -22,15 +26,48 @@ async def test_seed_is_idempotent(session: AsyncSession) -> None:
     first = await run_seed(session, settings)
     second = await run_seed(session, settings)
 
-    assert len(first.created) == len(SPECIES) + 2 + 1
+    assert len(first.created) == len(SPECIES) + LOCATIONS_CREATED + 1
     assert second.created == []
     assert await session.scalar(select(func.count()).select_from(WoodSpecies)) == len(SPECIES)
+    yards = (
+        await session.scalars(select(Location.name).where(Location.kind == LocationKind.WAREHOUSE))
+    ).all()
+    assert sorted(yards) == sorted(YARDS)
     street = await session.scalar(select(Location).where(Location.name == "Rua 08"))
-    assert street is not None and street.parent_id is not None
+    main = await session.scalar(select(Location).where(Location.name == MAIN_YARD))
+    assert street is not None and main is not None and street.parent_id == main.id
     admin = await session.scalar(select(User).where(User.email == "seed.admin@reo.local"))
     assert admin is not None
     assert admin.registration == "ADM-9"
     assert verify_password("Senha-forte-1", admin.password_hash)
+
+
+async def test_seed_renames_legacy_yard_instead_of_duplicating(session: AsyncSession) -> None:
+    """Banco antigo com "TG – Três Guri": vira o pátio principal, com as ruas e auditoria."""
+    legacy = Location(name="TG – Três Guri", kind=LocationKind.WAREHOUSE)
+    session.add(legacy)
+    await session.flush()
+    session.add(Location(name="Rua 08", kind=LocationKind.STREET, parent_id=legacy.id))
+    await session.flush()
+
+    first = await run_seed(session, get_settings())
+    second = await run_seed(session, get_settings())
+
+    assert any("renomeado" in item for item in first.created)
+    assert second.created == []
+    await session.refresh(legacy)
+    assert legacy.name == MAIN_YARD
+    mains = await session.scalar(
+        select(func.count()).select_from(Location).where(Location.name == MAIN_YARD)
+    )
+    assert mains == 1
+    rua_08 = (await session.scalars(select(Location).where(Location.name == "Rua 08"))).all()
+    assert [r.parent_id for r in rua_08] == [legacy.id]
+    log = await session.scalar(
+        select(AuditLog).where(AuditLog.action == "seed_rename", AuditLog.entity_id == legacy.id)
+    )
+    assert log is not None
+    assert log.before is not None and log.before["name"] == "TG – Três Guri"
 
 
 async def test_seed_skips_admin_with_example_password(session: AsyncSession) -> None:

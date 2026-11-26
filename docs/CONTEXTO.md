@@ -41,7 +41,9 @@ trimestral (supervisor).
   10 Dipteryx spp · 11 Enterolobium schomburgkii · 12 Goupia glabra · 13 Hymenaea courbaril ·
   15 Hymenolobium petraeum · 17 Ocotea neesiana · 19 Angelim Vermelho (Promap) ·
   20 Coimmal (dormentes antigos) · 21 Veneer (dormentes antigos) · 22 Astronium graveolens/fraxinifolium.
-- **Location**: hierarquia `warehouse` (pátio/armazém, ex. "TG – Três Guri") → `street` (ex. "Rua 08").
+- **Location**: hierarquia `warehouse` (pátio/armazém, ex. "Pátio Av. Raimundo Pereira de Magalhães, 200")
+  → `street` (ex. "Rua 08"). Pátios do seed: o principal (Av. Raimundo Pereira de Magalhães, 200,
+  com a Rua 08) e o Pátio Presidente Altino (Rua 01 e Rua 02).
   Campos: `name`, `kind`, `parent_id`, `latitude`/`longitude` opcionais.
 - **Sleeper** (dormente): `rfid_tag` (único), `registration_record` (ata de registro, ex. "AR00224-02"),
   `species_id`, `wood_class` (ex. "1a"), `length_m` (ex. 2.80), `treatment` (ex. "CCA"),
@@ -123,3 +125,8 @@ movimentações por dia (7 dias padrão); inspeções por dia; tempo médio de i
   Motivos: o Container Apps usa o Dockerfile que já existe e cabe na cota gratuita mensal quando
   escala a zero; o B1ms está na camada gratuita de 12 meses (750 h/mês + 32 GB). Passo a passo em
   `docs/DEPLOY.md`.
+- **Pátios (26/11/2026):** o pátio principal é o da **Av. Raimundo Pereira de Magalhães, 200**
+  (nome no sistema: "Pátio Av. Raimundo Pereira de Magalhães, 200"); o **Pátio Presidente Altino**
+  é o segundo. O nome anterior, "TG – Três Guri", veio da ficha de papel e não foi confirmado em
+  fonte pública; o seed renomeia esse pátio nos bancos antigos. A produção já foi ajustada pela API.
+  Coordenadas (latitude/longitude) dos pátios ainda não foram preenchidas.
