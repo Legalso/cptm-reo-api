@@ -73,7 +73,9 @@ O CI (`.github/workflows/ci.yml`) roda em todo PR e push na `main`:
 `uv run python -m app.scripts.seed` é idempotente: só cria o que falta e nunca sobrescreve.
 
 - **Espécies** da ficha da Rua 08: 01, 04, 05, 07, 09, 10, 11, 12, 13, 15, 17, 19, 20, 21, 22.
-- **Locais:** pátio `TG – Três Guri` com a rua `Rua 08`.
+- **Locais:** pátio principal `Pátio Av. Raimundo Pereira de Magalhães, 200` com a rua `Rua 08`,
+  e `Pátio Presidente Altino` com `Rua 01` e `Rua 02`. Em bancos antigos, o pátio `TG – Três Guri`
+  é renomeado para o principal (uma vez, com registro na auditoria), sem criar duplicata.
 - **Usuário admin:** matrícula/e-mail/senha de `SEED_ADMIN_*` no `.env`. Login aceita matrícula
   **ou** e-mail (`ADM-0001` / `admin@reo.local` no exemplo).
 

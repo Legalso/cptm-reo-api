@@ -1,7 +1,8 @@
-"""Seed idempotente: espécies da ficha, pátio TG/Rua 08 e usuário admin.
+"""Seed idempotente: espécies da ficha, pátios com suas ruas e usuário admin.
 
 Uso: `uv run python -m app.scripts.seed`. Rodar de novo só cria o que falta;
-nada existente é sobrescrito (inclusive a senha do admin).
+nada existente é sobrescrito (inclusive a senha do admin). A única exceção é o
+nome legado do pátio principal, renomeado uma vez (ver `LEGACY_YARD_NAMES`).
 """
 
 import asyncio
@@ -41,8 +42,16 @@ SPECIES: list[tuple[str, str | None, str | None]] = [
     ("22", "Astronium graveolens/fraxinifolium", None),
 ]
 
-WAREHOUSE_NAME = "TG – Três Guri"
-STREET_NAMES = ["Rua 08"]
+MAIN_YARD = "Pátio Av. Raimundo Pereira de Magalhães, 200"
+# Pátio → ruas. O primeiro é o principal (onde está a ficha da Rua 08).
+YARDS: dict[str, list[str]] = {
+    MAIN_YARD: ["Rua 08"],
+    "Pátio Presidente Altino": ["Rua 01", "Rua 02"],
+}
+# Nome antigo → nome atual. "TG – Três Guri" veio da ficha de papel e não foi confirmado;
+# em 2026-11-26 o time definiu o pátio principal pelo endereço. Bancos criados antes
+# têm o nome antigo: o seed renomeia (com auditoria) em vez de criar um pátio duplicado.
+LEGACY_YARD_NAMES: dict[str, str] = {"TG – Três Guri": MAIN_YARD}
 
 
 @dataclass
@@ -98,6 +107,29 @@ async def _get_or_create_location(
     return location
 
 
+async def _rename_legacy_yards(session: AsyncSession, report: SeedReport) -> None:
+    """Renomeia pátios com nome legado, se o nome atual ainda não existir."""
+    for old, new in LEGACY_YARD_NAMES.items():
+        top_level = Location.parent_id.is_(None)
+        legacy = await session.scalar(select(Location).where(Location.name == old, top_level))
+        current = await session.scalar(select(Location).where(Location.name == new, top_level))
+        if legacy is None or current is not None:
+            continue
+        before = audit.snapshot(legacy)
+        legacy.name = new
+        await session.flush()
+        await audit.record(
+            session,
+            actor_id=None,
+            action="seed_rename",
+            entity="location",
+            entity_id=legacy.id,
+            before=before,
+            after=audit.snapshot(legacy),
+        )
+        report.created.append(f"local {old} renomeado para {new}")
+
+
 async def _seed_admin(session: AsyncSession, settings: Settings, report: SeedReport) -> None:
     email = settings.seed_admin_email
     registration = settings.seed_admin_registration
@@ -138,11 +170,13 @@ async def run_seed(session: AsyncSession, settings: Settings) -> SeedReport:
     """Executa todas as etapas do seed numa única transação."""
     report = SeedReport()
     await _seed_species(session, report)
-    warehouse = await _get_or_create_location(
-        session, report, WAREHOUSE_NAME, LocationKind.WAREHOUSE, None
-    )
-    for street in STREET_NAMES:
-        await _get_or_create_location(session, report, street, LocationKind.STREET, warehouse)
+    await _rename_legacy_yards(session, report)
+    for yard_name, streets in YARDS.items():
+        yard = await _get_or_create_location(
+            session, report, yard_name, LocationKind.WAREHOUSE, None
+        )
+        for street in streets:
+            await _get_or_create_location(session, report, street, LocationKind.STREET, yard)
     await _seed_admin(session, settings, report)
     await session.commit()
     return report

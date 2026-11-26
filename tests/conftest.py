@@ -120,7 +120,9 @@ class Catalog:
 async def catalog(session: AsyncSession) -> Catalog:
     """Espécie + pátio com duas ruas, criados direto no banco."""
     species = WoodSpecies(code="13", scientific_name="Hymenaea courbaril")
-    warehouse = Location(name="TG – Três Guri", kind=LocationKind.WAREHOUSE)
+    warehouse = Location(
+        name="Pátio Av. Raimundo Pereira de Magalhães, 200", kind=LocationKind.WAREHOUSE
+    )
     session.add_all([species, warehouse])
     await session.flush()
     street = Location(name="Rua 08", kind=LocationKind.STREET, parent_id=warehouse.id)
