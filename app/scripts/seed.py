@@ -1,8 +1,9 @@
 """Seed idempotente: espécies da ficha, pátios com suas ruas e usuário admin.
 
 Uso: `uv run python -m app.scripts.seed`. Rodar de novo só cria o que falta;
-nada existente é sobrescrito (inclusive a senha do admin). A única exceção é o
-nome legado do pátio principal, renomeado uma vez (ver `LEGACY_YARD_NAMES`).
+nada existente é sobrescrito (inclusive a senha do admin). Exceções: o nome legado do
+pátio principal é renomeado uma vez (ver `LEGACY_YARD_NAMES`), e o nome popular vazio de
+uma espécie já cadastrada é completado (um nome popular preenchido nunca é trocado).
 """
 
 import asyncio
@@ -23,23 +24,27 @@ from app.services import audit
 
 logger = logging.getLogger(__name__)
 
-# (código, nome científico, nome comum) — ficha de dormentes da Rua 08.
+# (código, nome científico, nome popular) — ficha de dormentes da Rua 08.
+# Nomes populares conferidos em catálogos de madeiras (IPT/USP, LPF/SFB, OIMT e a lista de
+# nomes vulgares de MT). Um mesmo nome popular pode valer para várias espécies, e vice-versa.
 SPECIES: list[tuple[str, str | None, str | None]] = [
-    ("01", "Apuleia leiocarpa", None),
-    ("04", "Bowdichia brasiliensis/nitida", None),
-    ("05", "Bowdichia brasiliensis/nitida/Diplotropis purpurea", None),
-    ("07", "Dialium guianense", None),
-    ("09", "Dipteryx odorata", None),
-    ("10", "Dipteryx spp", None),
-    ("11", "Enterolobium schomburgkii", None),
-    ("12", "Goupia glabra", None),
-    ("13", "Hymenaea courbaril", None),
-    ("15", "Hymenolobium petraeum", None),
+    ("01", "Apuleia leiocarpa", "Garapa"),
+    ("04", "Bowdichia brasiliensis/nitida", "Sucupira"),
+    ("05", "Bowdichia brasiliensis/nitida/Diplotropis purpurea", "Sucupira"),
+    ("07", "Dialium guianense", "Jutaí-pororoca"),
+    ("09", "Dipteryx odorata", "Cumaru"),
+    ("10", "Dipteryx spp", "Cumaru"),
+    ("11", "Enterolobium schomburgkii", "Orelha-de-macaco"),
+    ("12", "Goupia glabra", "Cupiúba"),
+    ("13", "Hymenaea courbaril", "Jatobá"),
+    ("15", "Hymenolobium petraeum", "Angelim-pedra"),
+    # TODO(decidir): nome popular de Ocotea neesiana não encontrado em fonte confiável
+    # ("canela" vale para dezenas de Ocotea); confirmar com o especialista.
     ("17", "Ocotea neesiana", None),
     ("19", None, "Angelim Vermelho (Promap)"),
     ("20", None, "Coimmal (dormentes antigos)"),
     ("21", None, "Veneer (dormentes antigos)"),
-    ("22", "Astronium graveolens/fraxinifolium", None),
+    ("22", "Astronium graveolens/fraxinifolium", "Guaritá / Gonçalo-alves"),
 ]
 
 MAIN_YARD = "Pátio Av. Raimundo Pereira de Magalhães, 200"
@@ -61,10 +66,31 @@ class SeedReport:
     created: list[str] = field(default_factory=list)
 
 
+async def _fill_common_name(
+    session: AsyncSession, report: SeedReport, species: WoodSpecies, common: str
+) -> None:
+    """Completa o nome popular vazio de uma espécie já cadastrada (nunca troca um preenchido)."""
+    before = audit.snapshot(species)
+    species.common_name = common
+    await session.flush()
+    await audit.record(
+        session,
+        actor_id=None,
+        action="seed_fill",
+        entity="wood_species",
+        entity_id=species.id,
+        before=before,
+        after=audit.snapshot(species),
+    )
+    report.created.append(f"nome popular da espécie {species.code}")
+
+
 async def _seed_species(session: AsyncSession, report: SeedReport) -> None:
-    existing = set((await session.scalars(select(WoodSpecies.code))).all())
+    existing = {s.code: s for s in (await session.scalars(select(WoodSpecies))).all()}
     for code, scientific, common in SPECIES:
         if code in existing:
+            if common and existing[code].common_name is None:
+                await _fill_common_name(session, report, existing[code], common)
             continue
         species = WoodSpecies(code=code, scientific_name=scientific, common_name=common)
         session.add(species)

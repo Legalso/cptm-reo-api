@@ -36,11 +36,16 @@ trimestral (supervisor).
 
 ## Modelo de domínio
 - **WoodSpecies** (catálogo): `code` (ex. "01"), `scientific_name`, `common_name`, `active`.
-  Seed com a ficha de dormentes da Rua 08: 01 Apuleia leiocarpa · 04 Bowdichia brasiliensis/nitida ·
-  05 Bowdichia brasiliensis/nitida/Diplotropis purpurea · 07 Dialium guianense · 09 Dipteryx odorata ·
-  10 Dipteryx spp · 11 Enterolobium schomburgkii · 12 Goupia glabra · 13 Hymenaea courbaril ·
-  15 Hymenolobium petraeum · 17 Ocotea neesiana · 19 Angelim Vermelho (Promap) ·
-  20 Coimmal (dormentes antigos) · 21 Veneer (dormentes antigos) · 22 Astronium graveolens/fraxinifolium.
+  Seed com a ficha de dormentes da Rua 08 (nome científico — nome popular):
+  01 Apuleia leiocarpa — Garapa · 04 Bowdichia brasiliensis/nitida — Sucupira ·
+  05 Bowdichia brasiliensis/nitida/Diplotropis purpurea — Sucupira · 07 Dialium guianense — Jutaí-pororoca ·
+  09 Dipteryx odorata — Cumaru · 10 Dipteryx spp — Cumaru · 11 Enterolobium schomburgkii — Orelha-de-macaco ·
+  12 Goupia glabra — Cupiúba · 13 Hymenaea courbaril — Jatobá · 15 Hymenolobium petraeum — Angelim-pedra ·
+  17 Ocotea neesiana — **A DECIDIR** (nome popular não confirmado) · 19 Angelim Vermelho (Promap) ·
+  20 Coimmal (dormentes antigos) · 21 Veneer (dormentes antigos) ·
+  22 Astronium graveolens/fraxinifolium — Guaritá / Gonçalo-alves.
+  Nomes populares conferidos em catálogos de madeiras (IPT/USP, LPF/SFB, OIMT); um mesmo nome
+  popular pode cobrir várias espécies.
 - **Location**: hierarquia `warehouse` (pátio/armazém, ex. "Pátio Av. Raimundo Pereira de Magalhães, 200")
   → `street` (ex. "Rua 08"). Pátios do seed: o principal (Av. Raimundo Pereira de Magalhães, 200,
   com a Rua 08) e o Pátio Presidente Altino (Rua 01 e Rua 02).
